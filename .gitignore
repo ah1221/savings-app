@@ -1,0 +1,12 @@
+# 研修資料テキスト（公開リポジトリには含めない）
+aiあぷり.txt
+
+# 環境変数
+.env
+.env.local
+
+# OS / エディタの一時ファイル
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

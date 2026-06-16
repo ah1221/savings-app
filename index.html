@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>節約アプリ</title>
+<style>
+  /* 明るめテーマ：白＋黄色をメインに */
+  :root {
+    --bgColor: #fffdf5;
+    --cardColor: #ffffff;
+    --borderColor: #fde68a;
+    --textColor: #1f2937;
+    --subTextColor: #6b7280;
+    --accentColor: #16a34a;
+    --warningColor: #f59e0b;
+    --dangerColor: #dc2626;
+    --primaryColor: #fbbf24;
+    --primaryDeep: #d97706;
+    --todayColor: #f59e0b;
+    --softYellow: #fef3c7;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bgColor);
+    color: var(--textColor);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+    line-height: 1.6;
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 28px;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  .subTitle {
+    text-align: center;
+    color: var(--subTextColor);
+    margin-bottom: 28px;
+    font-size: 14px;
+  }
+
+  /* カード共通スタイル */
+  .card {
+    background-color: var(--cardColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.08);
+  }
+
+  .cardTitle {
+    font-size: 16px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cardTitle .icon {
+    font-size: 20px;
+  }
+
+  /* 入力フォーム */
+  .inputGroup {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  input[type="number"], input[type="text"] {
+    flex: 1;
+    min-width: 120px;
+    background-color: #fffdf5;
+    color: var(--textColor);
+    border: 1.5px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 15px;
+    outline: none;
+  }
+
+  input[type="number"]:focus, input[type="text"]:focus {
+    border-color: var(--primaryDeep);
+    background-color: #ffffff;
+  }
+
+  button {
+    background-color: var(--primaryColor);
+    color: #1f2937;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    box-shadow: 0 2px 4px rgba(217, 119, 6, 0.2);
+  }
+
+  button:hover { opacity: 0.85; }
+
+  button.secondary {
+    background-color: transparent;
+    color: var(--subTextColor);
+    border: 1px solid var(--borderColor);
+  }
+
+  button.danger {
+    background-color: transparent;
+    color: var(--dangerColor);
+    border: 1px solid var(--dangerColor);
+  }
+
+  /* 金額表示 */
+  .bigNumber {
+    font-size: 36px;
+    font-weight: 700;
+    margin: 12px 0;
+  }
+
+  .bigNumber.positive { color: var(--accentColor); }
+  .bigNumber.warning { color: var(--warningColor); }
+  .bigNumber.negative { color: var(--dangerColor); }
+
+  .labelText {
+    color: var(--subTextColor);
+    font-size: 13px;
+  }
+
+  /* プログレスバー（横長の月次バー） */
+  .progressBar {
+    width: 100%;
+    height: 16px;
+    background-color: var(--softYellow);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 12px;
+    position: relative;
+    border: 1.5px solid var(--borderColor);
+  }
+
+  .progressFill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primaryColor), var(--primaryDeep));
+    transition: width 0.5s ease;
+  }
+
+  .progressFill.warning {
+    background: linear-gradient(90deg, #f59e0b, #ea580c);
+  }
+
+  .progressFill.danger {
+    background: linear-gradient(90deg, #ef4444, #b91c1c);
+  }
+
+  /* 「今ここ」マーカー */
+  .progressMarker {
+    position: absolute;
+    top: -4px;
+    width: 4px;
+    height: 24px;
+    background-color: #7c3aed;
+    border-radius: 2px;
+    transform: translateX(-2px);
+    box-shadow: 0 0 6px rgba(124, 58, 237, 0.6);
+  }
+
+  .progressLabels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--subTextColor);
+    margin-top: 6px;
+  }
+
+  /* 統計グリッド */
+  .statGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .statBox {
+    background-color: var(--softYellow);
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .statBox .label {
+    color: var(--subTextColor);
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+
+  .statBox .value {
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  /* 曜日別バー */
+  .dayRow {
+    display: grid;
+    grid-template-columns: 40px 70px 1fr;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    transition: background-color 0.2s;
+  }
+
+  .dayRow.today {
+    background-color: var(--softYellow);
+    border: 2px solid var(--primaryDeep);
+  }
+
+  .dayLabel {
+    font-weight: 600;
+    font-size: 15px;
+    text-align: center;
+  }
+
+  .dayLabel.today {
+    color: var(--primaryDeep);
+  }
+
+  .dayLabel.sunday { color: var(--dangerColor); }
+  .dayLabel.saturday { color: #2563eb; }
+
+  .dayAmount {
+    font-size: 14px;
+    font-weight: 600;
+    text-align: right;
+  }
+
+  .dayAmount.zero { color: var(--subTextColor); font-weight: 400; }
+
+  .dayBarBg {
+    background-color: var(--softYellow);
+    border-radius: 6px;
+    height: 24px;
+    overflow: hidden;
+    position: relative;
+    border: 1.5px solid var(--borderColor);
+  }
+
+  .dayBarFill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primaryColor), var(--primaryDeep));
+    transition: width 0.4s ease;
+    border-radius: 4px;
+  }
+
+  .dayBarFill.over {
+    background: linear-gradient(90deg, #ef4444, #b91c1c);
+  }
+
+  /* 1日予算の目安線 */
+  .dayBudgetLine {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2.5px;
+    background-color: #7c3aed;
+    opacity: 0.85;
+  }
+
+  .weekSummary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    padding: 0 2px;
+  }
+
+  .todayBadge {
+    display: inline-block;
+    background-color: var(--primaryDeep);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+  }
+
+  /* 我慢リスト */
+  .gamanList {
+    list-style: none;
+    margin-top: 14px;
+  }
+
+  .gamanItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background-color: var(--softYellow);
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+
+  .gamanItem .info { flex: 1; }
+  .gamanItem .itemName { font-size: 15px; margin-bottom: 2px; }
+  .gamanItem .itemDate { font-size: 12px; color: var(--subTextColor); }
+
+  .gamanItem .itemAmount {
+    color: var(--accentColor);
+    font-weight: 600;
+    margin-right: 12px;
+  }
+
+  .deleteBtn {
+    background: none;
+    color: var(--dangerColor);
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 8px;
+  }
+
+  .emptyText {
+    color: var(--subTextColor);
+    text-align: center;
+    padding: 20px;
+    font-size: 14px;
+  }
+
+  /* 支出履歴 */
+  .expenseRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background-color: var(--softYellow);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  .expenseRow .amount {
+    color: var(--dangerColor);
+    font-weight: 600;
+  }
+
+  @media (max-width: 480px) {
+    .bigNumber { font-size: 28px; }
+    h1 { font-size: 22px; }
+    .dayRow { grid-template-columns: 30px 60px 1fr; gap: 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>💰 節約アプリ</h1>
+  <p class="subTitle" id="todayLabel">今日は</p>
+
+  <!-- 月次目標カード -->
+  <div class="card">
+    <div class="cardTitle"><span class="icon">🎯</span>今月の予算</div>
+    <div class="inputGroup">
+      <input type="number" id="monthlyBudgetInput" placeholder="今月使える金額（円）">
+      <button onclick="saveMonthlyBudget()">設定</button>
+    </div>
+    <div class="labelText">使った金額（紫の線が「今日の位置」）</div>
+    <div class="progressBar">
+      <div class="progressFill" id="progressFill" style="width: 0%"></div>
+      <div class="progressMarker" id="progressMarker" style="left: 0%"></div>
+    </div>
+    <div class="progressLabels">
+      <span>¥0</span>
+      <span id="progressMidLabel">目標達成ライン</span>
+      <span id="progressMaxLabel">¥0</span>
+    </div>
+    <div class="statGrid">
+      <div class="statBox">
+        <div class="label">残り使える</div>
+        <div class="value" id="remainingDisplay">¥0</div>
+      </div>
+      <div class="statBox">
+        <div class="label">使った金額</div>
+        <div class="value" id="spentDisplay">¥0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 週次カード -->
+  <div class="card">
+    <div class="cardTitle">
+      <span class="icon">📅</span>今週の予算
+      <span class="todayBadge" id="todayBadge">今日</span>
+    </div>
+    <div class="labelText">今週あといくら使える</div>
+    <div class="bigNumber positive" id="weeklyRemainingDisplay">¥0</div>
+    <div class="progressBar">
+      <div class="progressFill" id="weeklyProgressFill" style="width: 0%"></div>
+    </div>
+    <div class="progressLabels">
+      <span>今週使った: <span id="weeklySpentDisplay">¥0</span></span>
+      <span>今週の予算: <span id="weeklyBudgetDisplay">¥0</span></span>
+    </div>
+    <div class="statGrid">
+      <div class="statBox">
+        <div class="label">1日あたり</div>
+        <div class="value" id="dailyBudgetDisplay">¥0</div>
+      </div>
+      <div class="statBox">
+        <div class="label">今日あと使える</div>
+        <div class="value" id="todayRemainingDisplay">¥0</div>
+      </div>
+    </div>
+    <div style="margin-top: 18px;">
+      <div class="weekSummary">
+        <span class="labelText">曜日別の支出（紫の線＝1日の予算）</span>
+      </div>
+      <div id="dayBars"></div>
+    </div>
+  </div>
+
+  <!-- 支出記録カード -->
+  <div class="card">
+    <div class="cardTitle"><span class="icon">💸</span>支出を記録する</div>
+    <div class="inputGroup">
+      <input type="text" id="expenseNameInput" placeholder="例：ランチ">
+      <input type="number" id="expenseAmountInput" placeholder="金額">
+      <button onclick="addExpense()">記録</button>
+    </div>
+    <div id="expenseList"></div>
+  </div>
+
+  <!-- 我慢貯金カード -->
+  <div class="card">
+    <div class="cardTitle"><span class="icon">🏆</span>我慢貯金</div>
+    <p class="labelText">買うのを我慢したものを記録すると積み上がります</p>
+    <div class="bigNumber positive" id="gamanTotalDisplay">¥0</div>
+    <div class="inputGroup">
+      <input type="text" id="gamanNameInput" placeholder="例：コンビニのお菓子">
+      <input type="number" id="gamanAmountInput" placeholder="我慢した金額">
+      <button onclick="addGaman()">追加</button>
+    </div>
+    <ul class="gamanList" id="gamanList"></ul>
+  </div>
+
+  <div style="text-align:center; margin-top: 16px;">
+    <button class="danger" onclick="resetMonth()">今月の支出をリセット</button>
+  </div>
+</div>
+
+<script>
+  // 曜日名（日曜=0始まり）
+  const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+
+  // 状態管理：localStorageから読み込み
+  let monthlyBudget = Number(localStorage.getItem("monthlyBudget")) || 0;
+  let expenseList = JSON.parse(localStorage.getItem("expenseList")) || [];
+  let gamanList = JSON.parse(localStorage.getItem("gamanList")) || [];
+
+  // 旧データ移行：dateIsoがない既存データに今日の日付を補完
+  expenseList = expenseList.map(item => {
+    if (!item.dateIso) item.dateIso = toIsoDate(new Date());
+    return item;
+  });
+
+  // 月が変わったら支出をリセット
+  const currentMonthKey = new Date().getFullYear() + "-" + (new Date().getMonth() + 1);
+  const savedMonthKey = localStorage.getItem("currentMonthKey");
+  if (savedMonthKey !== currentMonthKey) {
+    expenseList = [];
+    localStorage.setItem("expenseList", JSON.stringify(expenseList));
+    localStorage.setItem("currentMonthKey", currentMonthKey);
+  }
+
+  // YYYY-MM-DD形式の文字列に変換
+  function toIsoDate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  // 金額を「¥1,000」形式に整形
+  function formatYen(amount) {
+    const sign = amount < 0 ? "-" : "";
+    return sign + "¥" + Math.abs(Math.round(amount)).toLocaleString();
+  }
+
+  // 月末までの残り日数
+  function getDaysLeftInMonth() {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    return lastDay - now.getDate() + 1;
+  }
+
+  // 今週の月曜日を取得（月曜始まり）
+  function getMondayOfThisWeek() {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+    return monday;
+  }
+
+  // 今週の各日（月〜日）のDateを配列で取得
+  function getThisWeekDates() {
+    const monday = getMondayOfThisWeek();
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+      dates.push(d);
+    }
+    return dates;
+  }
+
+  // 月次目標を保存
+  function saveMonthlyBudget() {
+    const inputValue = Number(document.getElementById("monthlyBudgetInput").value);
+    if (inputValue <= 0 || isNaN(inputValue)) {
+      alert("正しい金額を入力してください");
+      return;
+    }
+    monthlyBudget = inputValue;
+    localStorage.setItem("monthlyBudget", monthlyBudget);
+    document.getElementById("monthlyBudgetInput").value = "";
+    updateDisplay();
+  }
+
+  // 支出を追加
+  function addExpense() {
+    const name = document.getElementById("expenseNameInput").value.trim();
+    const amount = Number(document.getElementById("expenseAmountInput").value);
+    if (!name || amount <= 0 || isNaN(amount)) {
+      alert("項目名と金額を入力してください");
+      return;
+    }
+    const now = new Date();
+    expenseList.unshift({
+      id: Date.now(),
+      name: name,
+      amount: amount,
+      dateIso: toIsoDate(now),
+      date: now.toLocaleDateString("ja-JP")
+    });
+    localStorage.setItem("expenseList", JSON.stringify(expenseList));
+    document.getElementById("expenseNameInput").value = "";
+    document.getElementById("expenseAmountInput").value = "";
+    updateDisplay();
+  }
+
+  function deleteExpense(id) {
+    expenseList = expenseList.filter(item => item.id !== id);
+    localStorage.setItem("expenseList", JSON.stringify(expenseList));
+    updateDisplay();
+  }
+
+  function addGaman() {
+    const name = document.getElementById("gamanNameInput").value.trim();
+    const amount = Number(document.getElementById("gamanAmountInput").value);
+    if (!name || amount <= 0 || isNaN(amount)) {
+      alert("項目名と金額を入力してください");
+      return;
+    }
+    gamanList.unshift({
+      id: Date.now(),
+      name: name,
+      amount: amount,
+      date: new Date().toLocaleDateString("ja-JP")
+    });
+    localStorage.setItem("gamanList", JSON.stringify(gamanList));
+    document.getElementById("gamanNameInput").value = "";
+    document.getElementById("gamanAmountInput").value = "";
+    updateDisplay();
+  }
+
+  function deleteGaman(id) {
+    if (!confirm("この我慢貯金を削除しますか？")) return;
+    gamanList = gamanList.filter(item => item.id !== id);
+    localStorage.setItem("gamanList", JSON.stringify(gamanList));
+    updateDisplay();
+  }
+
+  function resetMonth() {
+    if (!confirm("今月の支出記録を全て削除しますか？\n（目標金額と我慢貯金は残ります）")) return;
+    expenseList = [];
+    localStorage.setItem("expenseList", JSON.stringify(expenseList));
+    updateDisplay();
+  }
+
+  // 画面の表示を更新
+  function updateDisplay() {
+    const now = new Date();
+    const todayIso = toIsoDate(now);
+    const todayDayOfWeek = now.getDay();
+
+    // タイトル下の今日表示
+    document.getElementById("todayLabel").textContent =
+      `今日は ${now.getMonth() + 1}月${now.getDate()}日（${dayNames[todayDayOfWeek]}）`;
+
+    // ===== 月次の集計 =====
+    const totalSpent = expenseList.reduce((sum, item) => sum + item.amount, 0);
+    const remaining = monthlyBudget - totalSpent;
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    // 今月の経過率（今日が何日目か）
+    const monthProgress = monthlyBudget > 0 ? (now.getDate() / lastDay) * 100 : 0;
+    const usageRate = monthlyBudget > 0 ? Math.min(100, (totalSpent / monthlyBudget) * 100) : 0;
+
+    document.getElementById("spentDisplay").textContent = formatYen(totalSpent);
+    const remainingEl = document.getElementById("remainingDisplay");
+    remainingEl.textContent = formatYen(remaining);
+    remainingEl.style.color = remaining < 0 ? "var(--dangerColor)" :
+                              (monthlyBudget > 0 && remaining < monthlyBudget * 0.2) ? "var(--warningColor)" :
+                              "var(--accentColor)";
+
+    // 月次プログレスバー
+    const progressFillEl = document.getElementById("progressFill");
+    progressFillEl.style.width = usageRate + "%";
+    progressFillEl.classList.remove("warning", "danger");
+    // 使用率が日数経過率より進みすぎている場合は警告色
+    if (usageRate >= 100) {
+      progressFillEl.classList.add("danger");
+    } else if (monthlyBudget > 0 && usageRate > monthProgress + 10) {
+      progressFillEl.classList.add("warning");
+    }
+    // 「今ここ」マーカー（今日の位置 = 経過率）
+    document.getElementById("progressMarker").style.left = monthProgress + "%";
+    document.getElementById("progressMaxLabel").textContent = formatYen(monthlyBudget);
+    document.getElementById("progressMidLabel").textContent =
+      monthlyBudget > 0 ? `今日の目安: ${formatYen(monthlyBudget * monthProgress / 100)}` : "目標達成ライン";
+
+    // ===== 週次の集計 =====
+    const weekDates = getThisWeekDates();
+    const weekIsoList = weekDates.map(d => toIsoDate(d));
+    // 各曜日の支出
+    const dailySpent = weekIsoList.map(iso =>
+      expenseList.filter(item => item.dateIso === iso).reduce((sum, item) => sum + item.amount, 0)
+    );
+    const weekTotalSpent = dailySpent.reduce((sum, v) => sum + v, 0);
+
+    // 今週のうち、今月に含まれる日数を数える（月をまたぐ週に対応）
+    const daysOfWeekInThisMonth = weekDates.filter(d =>
+      d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+    ).length;
+    // 1日あたりの予算 = 月予算 ÷ 今月の日数
+    const dailyBudget = monthlyBudget > 0 ? monthlyBudget / lastDay : 0;
+    // 今週の予算 = 月予算を今週分で案分（今月にかかる日数分のみ）
+    const weeklyBudget = dailyBudget * daysOfWeekInThisMonth;
+    // 今週あと使える = 今週の予算 - 今週これまでの支出
+    const weeklyRemaining = weeklyBudget - weekTotalSpent;
+
+    const weeklyRemainingEl = document.getElementById("weeklyRemainingDisplay");
+    weeklyRemainingEl.textContent = formatYen(Math.max(0, weeklyRemaining));
+    weeklyRemainingEl.classList.remove("positive", "warning", "negative");
+    if (weeklyRemaining < 0) weeklyRemainingEl.classList.add("negative");
+    else if (weeklyRemaining < weeklyBudget * 0.2) weeklyRemainingEl.classList.add("warning");
+    else weeklyRemainingEl.classList.add("positive");
+
+    document.getElementById("weeklySpentDisplay").textContent = formatYen(weekTotalSpent);
+    document.getElementById("weeklyBudgetDisplay").textContent = formatYen(weeklyBudget);
+    const weeklyRate = weeklyBudget > 0 ? Math.min(100, (weekTotalSpent / weeklyBudget) * 100) : 0;
+    document.getElementById("weeklyProgressFill").style.width = weeklyRate + "%";
+
+    // 1日あたりの予算と、今日あと使える金額
+    const weekDayIndex = todayDayOfWeek === 0 ? 6 : todayDayOfWeek - 1; // 月=0, 日=6
+    const todaySpent = dailySpent[weekDayIndex] || 0;
+    const todayRemaining = dailyBudget - todaySpent;
+    document.getElementById("dailyBudgetDisplay").textContent = formatYen(dailyBudget);
+    const todayRemainingEl = document.getElementById("todayRemainingDisplay");
+    todayRemainingEl.textContent = formatYen(todayRemaining);
+    todayRemainingEl.style.color = todayRemaining < 0 ? "var(--dangerColor)" :
+                                    todayRemaining < dailyBudget * 0.2 ? "var(--warningColor)" :
+                                    "var(--accentColor)";
+
+    // ===== 曜日別バー =====
+    // バーの最大値：1日予算と最大支出の大きい方（最低でも何か表示されるように）
+    const maxScale = Math.max(dailyBudget, ...dailySpent, 100);
+    const budgetMarkerPercent = maxScale > 0 ? (dailyBudget / maxScale) * 100 : 0;
+
+    const dayBarsHtml = weekDates.map((d, i) => {
+      const dayOfWeek = d.getDay();
+      const isToday = toIsoDate(d) === todayIso;
+      const amount = dailySpent[i];
+      const fillPercent = maxScale > 0 ? Math.min(100, (amount / maxScale) * 100) : 0;
+      const isOver = dailyBudget > 0 && amount > dailyBudget;
+
+      let labelClass = "dayLabel";
+      if (isToday) labelClass += " today";
+      else if (dayOfWeek === 0) labelClass += " sunday";
+      else if (dayOfWeek === 6) labelClass += " saturday";
+
+      return `
+        <div class="dayRow ${isToday ? 'today' : ''}">
+          <div class="${labelClass}">${dayNames[dayOfWeek]}</div>
+          <div class="dayAmount ${amount === 0 ? 'zero' : ''}">${formatYen(amount)}</div>
+          <div class="dayBarBg">
+            <div class="dayBarFill ${isOver ? 'over' : ''}" style="width: ${fillPercent}%"></div>
+            ${dailyBudget > 0 ? `<div class="dayBudgetLine" style="left: ${budgetMarkerPercent}%;"></div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join("");
+    document.getElementById("dayBars").innerHTML = dayBarsHtml;
+
+    // ===== 支出履歴 =====
+    const expenseListEl = document.getElementById("expenseList");
+    if (expenseList.length === 0) {
+      expenseListEl.innerHTML = '<div class="emptyText">まだ支出の記録はありません</div>';
+    } else {
+      expenseListEl.innerHTML = expenseList.map(item => `
+        <div class="expenseRow">
+          <div>
+            <div>${escapeHtml(item.name)}</div>
+            <div style="font-size:11px;color:var(--subTextColor)">${item.date || ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="amount">-${formatYen(item.amount)}</span>
+            <button class="deleteBtn" onclick="deleteExpense(${item.id})">×</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // ===== 我慢貯金 =====
+    const gamanTotal = gamanList.reduce((sum, item) => sum + item.amount, 0);
+    document.getElementById("gamanTotalDisplay").textContent = formatYen(gamanTotal);
+
+    const gamanListEl = document.getElementById("gamanList");
+    if (gamanList.length === 0) {
+      gamanListEl.innerHTML = '<div class="emptyText">我慢した記録がここに積み上がります 💪</div>';
+    } else {
+      gamanListEl.innerHTML = gamanList.map(item => `
+        <li class="gamanItem">
+          <div class="info">
+            <div>${escapeHtml(item.name)}</div>
+            <div class="itemDate">${item.date}</div>
+          </div>
+          <span class="itemAmount">+${formatYen(item.amount)}</span>
+          <button class="deleteBtn" onclick="deleteGaman(${item.id})">×</button>
+        </li>
+      `).join("");
+    }
+  }
+
+  // XSS対策：HTMLエスケープ
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  updateDisplay();
+</script>
+</body>
+</html>
