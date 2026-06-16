@@ -214,13 +214,27 @@
   /* 曜日別バー */
   .dayRow {
     display: grid;
-    grid-template-columns: 40px 70px 1fr;
+    grid-template-columns: 36px 70px 1fr;
     align-items: center;
     gap: 10px;
     padding: 8px 10px;
     border-radius: 8px;
     margin-bottom: 4px;
     transition: background-color 0.2s;
+  }
+
+  /* バー＋予算ラベルのラッパー */
+  .dayBarWrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .dayBudgetLabel {
+    font-size: 11px;
+    color: var(--subTextColor);
+    text-align: right;
+    padding-right: 4px;
   }
 
   .dayRow.today {
@@ -248,6 +262,7 @@
   }
 
   .dayAmount.zero { color: var(--subTextColor); font-weight: 400; }
+  .dayAmount.over { color: var(--dangerColor); }
 
   .dayBarBg {
     background-color: var(--softYellow);
@@ -703,10 +718,13 @@
       return `
         <div class="dayRow ${isToday ? 'today' : ''}">
           <div class="${labelClass}">${dayNames[dayOfWeek]}</div>
-          <div class="dayAmount ${amount === 0 ? 'zero' : ''}">${formatYen(amount)}</div>
-          <div class="dayBarBg">
-            <div class="dayBarFill ${isOver ? 'over' : ''}" style="width: ${fillPercent}%"></div>
-            ${dailyBudget > 0 ? `<div class="dayBudgetLine" style="left: ${budgetMarkerPercent}%;"></div>` : ''}
+          <div class="dayAmount ${amount === 0 ? 'zero' : ''} ${isOver ? 'over' : ''}">${formatYen(amount)}</div>
+          <div class="dayBarWrap">
+            <div class="dayBarBg">
+              <div class="dayBarFill ${isOver ? 'over' : ''}" style="width: ${fillPercent}%"></div>
+              ${dailyBudget > 0 ? `<div class="dayBudgetLine" style="left: ${budgetMarkerPercent}%;"></div>` : ''}
+            </div>
+            ${dailyBudget > 0 ? `<div class="dayBudgetLabel">予算 ${formatYen(dailyBudget)}</div>` : ''}
           </div>
         </div>
       `;
