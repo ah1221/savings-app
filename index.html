@@ -166,16 +166,22 @@
     background: linear-gradient(90deg, #ef4444, #b91c1c);
   }
 
-  /* 「今ここ」マーカー */
+  /* バーの外枠（▼マーカー用の余白を上に確保） */
+  .progressBarWrap {
+    position: relative;
+    margin-top: 24px;
+  }
+
+  /* 「今ここ」▼マーカー */
   .progressMarker {
     position: absolute;
-    top: -4px;
-    width: 4px;
-    height: 24px;
-    background-color: #7c3aed;
-    border-radius: 2px;
-    transform: translateX(-2px);
-    box-shadow: 0 0 6px rgba(124, 58, 237, 0.6);
+    top: -18px;
+    transform: translateX(-50%);
+    color: #7c3aed;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    transition: left 0.4s ease;
   }
 
   .progressLabels {
@@ -355,6 +361,54 @@
     font-size: 14px;
   }
 
+  /* 我慢貯金の合計表示まわり（キラキラ演出用） */
+  .gamanTotalWrap {
+    position: relative;
+    display: inline-block;
+    margin: 12px 0;
+  }
+
+  .gamanTotalWrap .bigNumber {
+    margin: 0;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* 金額がパッと光る演出 */
+  .gamanTotalWrap.celebrating .bigNumber {
+    animation: numberPulse 0.9s ease-out;
+  }
+
+  @keyframes numberPulse {
+    0%   { transform: scale(1); text-shadow: none; }
+    35%  { transform: scale(1.18); text-shadow: 0 0 24px rgba(251, 191, 36, 0.85); }
+    100% { transform: scale(1); text-shadow: none; }
+  }
+
+  /* キラキラ✨が散る層（合計金額の周りに広めの余裕） */
+  .sparkleLayer {
+    position: absolute;
+    inset: -70px -100px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .sparkle {
+    position: absolute;
+    color: #fbbf24;
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.9), 0 0 4px #fff;
+    animation: sparkleBurst 1.4s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+    user-select: none;
+    line-height: 1;
+  }
+
+  @keyframes sparkleBurst {
+    0%   { transform: scale(0) rotate(0deg) translate(0, 0); opacity: 0; }
+    25%  { transform: scale(1.2) rotate(120deg) translate(var(--tx, 0), var(--ty, 0)); opacity: 1; }
+    70%  { transform: scale(1) rotate(280deg) translate(calc(var(--tx, 0px) * 1.3), calc(var(--ty, 0px) * 1.3)); opacity: 1; }
+    100% { transform: scale(0.4) rotate(420deg) translate(calc(var(--tx, 0px) * 1.5), calc(var(--ty, 0px) * 1.5 - 20px)); opacity: 0; }
+  }
+
   /* 支出履歴 */
   .expenseRow {
     display: flex;
@@ -391,10 +445,12 @@
       <input type="number" id="monthlyBudgetInput" placeholder="今月使える金額（円）">
       <button onclick="saveMonthlyBudget()">設定</button>
     </div>
-    <div class="labelText">使った金額（紫の線が「今日の位置」）</div>
-    <div class="progressBar">
-      <div class="progressFill" id="progressFill" style="width: 0%"></div>
-      <div class="progressMarker" id="progressMarker" style="left: 0%"></div>
+    <div class="labelText">使った金額（▼が「今日の位置」）</div>
+    <div class="progressBarWrap">
+      <div class="progressMarker" id="progressMarker" style="left: 0%">▼</div>
+      <div class="progressBar">
+        <div class="progressFill" id="progressFill" style="width: 0%"></div>
+      </div>
     </div>
     <div class="progressLabels">
       <span>¥0</span>
@@ -403,12 +459,12 @@
     </div>
     <div class="statGrid">
       <div class="statBox">
-        <div class="label">残り使える</div>
-        <div class="value" id="remainingDisplay">¥0</div>
-      </div>
-      <div class="statBox">
         <div class="label">使った金額</div>
         <div class="value" id="spentDisplay">¥0</div>
+      </div>
+      <div class="statBox">
+        <div class="label">残り使える</div>
+        <div class="value" id="remainingDisplay">¥0</div>
       </div>
     </div>
   </div>
@@ -440,7 +496,7 @@
     </div>
     <div style="margin-top: 18px;">
       <div class="weekSummary">
-        <span class="labelText">曜日別の支出（紫の線＝1日の予算）</span>
+        <span class="labelText">曜日別の支出（バー右端＝その日の予算）</span>
       </div>
       <div id="dayBars"></div>
     </div>
@@ -461,7 +517,10 @@
   <div class="card">
     <div class="cardTitle"><span class="icon">🏆</span>我慢貯金</div>
     <p class="labelText">買うのを我慢したものを記録すると積み上がります</p>
-    <div class="bigNumber positive" id="gamanTotalDisplay">¥0</div>
+    <div class="gamanTotalWrap">
+      <div class="bigNumber positive" id="gamanTotalDisplay">¥0</div>
+      <div class="sparkleLayer" id="sparkleLayer"></div>
+    </div>
     <div class="inputGroup">
       <input type="text" id="gamanNameInput" placeholder="例：コンビニのお菓子">
       <input type="number" id="gamanAmountInput" placeholder="我慢した金額">
@@ -598,6 +657,8 @@
     document.getElementById("gamanNameInput").value = "";
     document.getElementById("gamanAmountInput").value = "";
     updateDisplay();
+    // 我慢を追加したお祝いキラキラ演出
+    triggerSparkles();
   }
 
   function deleteGaman(id) {
@@ -664,14 +725,28 @@
     );
     const weekTotalSpent = dailySpent.reduce((sum, v) => sum + v, 0);
 
-    // 今週のうち、今月に含まれる日数を数える（月をまたぐ週に対応）
-    const daysOfWeekInThisMonth = weekDates.filter(d =>
-      d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-    ).length;
-    // 1日あたりの予算 = 月予算 ÷ 今月の日数
-    const dailyBudget = monthlyBudget > 0 ? monthlyBudget / lastDay : 0;
-    // 今週の予算 = 月予算を今週分で案分（今月にかかる日数分のみ）
-    const weeklyBudget = dailyBudget * daysOfWeekInThisMonth;
+    // 平日:土日 = 1:2 の比率で案分するため、今月の平日数と土日数を数える
+    let weekdayCountMonth = 0;
+    let weekendCountMonth = 0;
+    for (let d = 1; d <= lastDay; d++) {
+      const dow = new Date(now.getFullYear(), now.getMonth(), d).getDay();
+      if (dow === 0 || dow === 6) weekendCountMonth++;
+      else weekdayCountMonth++;
+    }
+    // 平日1単位、土日2単位として総単位数を計算し、平日の1日予算を求める
+    const totalUnits = weekdayCountMonth + weekendCountMonth * 2;
+    const weekdayBudget = monthlyBudget > 0 && totalUnits > 0 ? monthlyBudget / totalUnits : 0;
+    const weekendBudget = weekdayBudget * 2;
+
+    // 曜日から1日の予算を取得（土日は平日の2倍）
+    function getDayBudget(dayOfWeek) {
+      return (dayOfWeek === 0 || dayOfWeek === 6) ? weekendBudget : weekdayBudget;
+    }
+
+    // 今週の予算 = 今週の各日の予算を合計（今月にかかる日のみ）
+    const weeklyBudget = weekDates
+      .filter(d => d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth())
+      .reduce((sum, d) => sum + getDayBudget(d.getDay()), 0);
     // 今週あと使える = 今週の予算 - 今週これまでの支出
     const weeklyRemaining = weeklyBudget - weekTotalSpent;
 
@@ -687,28 +762,30 @@
     const weeklyRate = weeklyBudget > 0 ? Math.min(100, (weekTotalSpent / weeklyBudget) * 100) : 0;
     document.getElementById("weeklyProgressFill").style.width = weeklyRate + "%";
 
-    // 1日あたりの予算と、今日あと使える金額
+    // 今日の予算（平日/土日で異なる）と、今日あと使える金額
     const weekDayIndex = todayDayOfWeek === 0 ? 6 : todayDayOfWeek - 1; // 月=0, 日=6
     const todaySpent = dailySpent[weekDayIndex] || 0;
-    const todayRemaining = dailyBudget - todaySpent;
-    document.getElementById("dailyBudgetDisplay").textContent = formatYen(dailyBudget);
+    const todayBudget = getDayBudget(todayDayOfWeek);
+    const todayRemaining = todayBudget - todaySpent;
+    // 「1日あたり」は平日/土日の両方を表示
+    document.getElementById("dailyBudgetDisplay").innerHTML =
+      `<span style="font-size:13px;color:var(--subTextColor)">平日</span> ${formatYen(weekdayBudget)}<br>` +
+      `<span style="font-size:13px;color:var(--subTextColor)">土日</span> ${formatYen(weekendBudget)}`;
     const todayRemainingEl = document.getElementById("todayRemainingDisplay");
     todayRemainingEl.textContent = formatYen(todayRemaining);
     todayRemainingEl.style.color = todayRemaining < 0 ? "var(--dangerColor)" :
-                                    todayRemaining < dailyBudget * 0.2 ? "var(--warningColor)" :
+                                    todayRemaining < todayBudget * 0.2 ? "var(--warningColor)" :
                                     "var(--accentColor)";
 
     // ===== 曜日別バー =====
-    // バーの最大値：1日予算と最大支出の大きい方（最低でも何か表示されるように）
-    const maxScale = Math.max(dailyBudget, ...dailySpent, 100);
-    const budgetMarkerPercent = maxScale > 0 ? (dailyBudget / maxScale) * 100 : 0;
-
+    // 各曜日のバーは、その日の予算を100%（右端）として表示
     const dayBarsHtml = weekDates.map((d, i) => {
       const dayOfWeek = d.getDay();
       const isToday = toIsoDate(d) === todayIso;
       const amount = dailySpent[i];
-      const fillPercent = maxScale > 0 ? Math.min(100, (amount / maxScale) * 100) : 0;
-      const isOver = dailyBudget > 0 && amount > dailyBudget;
+      const thisDayBudget = getDayBudget(dayOfWeek);
+      const fillPercent = thisDayBudget > 0 ? Math.min(100, (amount / thisDayBudget) * 100) : 0;
+      const isOver = thisDayBudget > 0 && amount > thisDayBudget;
 
       let labelClass = "dayLabel";
       if (isToday) labelClass += " today";
@@ -722,9 +799,8 @@
           <div class="dayBarWrap">
             <div class="dayBarBg">
               <div class="dayBarFill ${isOver ? 'over' : ''}" style="width: ${fillPercent}%"></div>
-              ${dailyBudget > 0 ? `<div class="dayBudgetLine" style="left: ${budgetMarkerPercent}%;"></div>` : ''}
             </div>
-            ${dailyBudget > 0 ? `<div class="dayBudgetLabel">予算 ${formatYen(dailyBudget)}</div>` : ''}
+            ${thisDayBudget > 0 ? `<div class="dayBudgetLabel">予算 ${formatYen(thisDayBudget)}</div>` : ''}
           </div>
         </div>
       `;
@@ -771,6 +847,41 @@
     }
   }
 
+  // 我慢を追加したお祝いキラキラ演出
+  // ・大きな金額テキストがふわっとパルス＋金色に光る
+  // ・周囲に✨を10個ばらまき、外側に飛び散りながらフェードアウト
+  function triggerSparkles() {
+    const wrap = document.querySelector(".gamanTotalWrap");
+    const layer = document.getElementById("sparkleLayer");
+    if (!wrap || !layer) return;
+    // 数字本体をパルス
+    wrap.classList.remove("celebrating");
+    // CSSアニメ再起動のため一瞬リフロー
+    void wrap.offsetWidth;
+    wrap.classList.add("celebrating");
+
+    // ✨を金額の中心から放射状に大きく飛び散らせる
+    const sparkleCount = 8;
+    const symbols = ["✨", "⭐", "✨", "💫", "✨"];
+    for (let i = 0; i < sparkleCount; i++) {
+      const s = document.createElement("div");
+      s.className = "sparkle";
+      s.textContent = symbols[i % symbols.length];
+      // 中央からランダムな方向に飛び散らせる（広めの距離）
+      const angle = (i / sparkleCount) * Math.PI * 2 + Math.random() * 0.4;
+      const distance = 80 + Math.random() * 70;
+      s.style.setProperty("--tx", Math.cos(angle) * distance + "px");
+      s.style.setProperty("--ty", Math.sin(angle) * distance + "px");
+      // 初期位置：合計金額の中心
+      s.style.left = "50%";
+      s.style.top = "50%";
+      s.style.fontSize = (14 + Math.random() * 10) + "px";
+      s.style.animationDelay = (i * 20) + "ms";
+      layer.appendChild(s);
+      setTimeout(() => s.remove(), 1500 + i * 20);
+    }
+  }
+
   // XSS対策：HTMLエスケープ
   function escapeHtml(str) {
     const div = document.createElement("div");
@@ -778,7 +889,44 @@
     return div.innerHTML;
   }
 
+  // 入力欄でEnter→送信、→キー→隣の入力欄に移動できるようにする
+  function setupInputKeys() {
+    // 同じ行の入力欄をまとめ、対応する送信関数を結びつける
+    const groups = [
+      { fields: ["monthlyBudgetInput"], submit: saveMonthlyBudget },
+      { fields: ["expenseNameInput", "expenseAmountInput"], submit: addExpense },
+      { fields: ["gamanNameInput", "gamanAmountInput"], submit: addGaman }
+    ];
+    groups.forEach(group => {
+      group.fields.forEach((id, idx) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("keydown", (e) => {
+          // Enter キー：その行の追加ボタンを実行
+          if (e.key === "Enter") {
+            e.preventDefault();
+            group.submit();
+            return;
+          }
+          // → キー：カーソルが入力末尾にあるとき、次の入力欄へフォーカス移動
+          if (e.key === "ArrowRight" && idx < group.fields.length - 1) {
+            // type="number" は selectionStart が取れないので常に末尾扱い
+            const isAtEnd = el.type === "number" ||
+                            (el.selectionStart === el.value.length &&
+                             el.selectionStart === el.selectionEnd);
+            if (isAtEnd) {
+              e.preventDefault();
+              const next = document.getElementById(group.fields[idx + 1]);
+              if (next) next.focus();
+            }
+          }
+        });
+      });
+    });
+  }
+
   updateDisplay();
+  setupInputKeys();
 </script>
 </body>
 </html>
