@@ -361,6 +361,91 @@
     font-size: 14px;
   }
 
+  /* 1日あたりボックスのラベル行（ラベル＋⚙ボタン） */
+  .dailyLabelRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .ratioGearBtn {
+    background-color: #ffffff;
+    color: var(--primaryDeep);
+    border: 1px solid var(--borderColor);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    line-height: 1.4;
+    box-shadow: none;
+    white-space: nowrap;
+  }
+
+  .ratioGearBtn:hover {
+    background-color: var(--primaryColor);
+    color: #1f2937;
+  }
+
+  .ratioCaret {
+    display: inline-block;
+    font-size: 9px;
+    margin-left: 2px;
+    transition: transform 0.2s ease;
+  }
+
+  .ratioGearBtn.open .ratioCaret {
+    transform: rotate(180deg);
+  }
+
+  /* 配分比率の設定パネル（折りたたみ） */
+  .ratioPanel {
+    display: none;
+    margin-top: 12px;
+    padding: 14px;
+    background-color: #ffffff;
+    border: 1.5px solid var(--borderColor);
+    border-radius: 10px;
+  }
+
+  .ratioPanel.open {
+    display: block;
+  }
+
+  .ratioLabel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--textColor);
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .ratioLabel input {
+    flex: 1;
+    min-width: 60px;
+  }
+
+  .presetRow {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .presetBtn {
+    background-color: #ffffff;
+    color: var(--primaryDeep);
+    border: 1px solid var(--borderColor);
+    font-size: 12px;
+    padding: 4px 10px;
+    box-shadow: none;
+    font-weight: 500;
+  }
+
   /* 我慢貯金の合計表示まわり（キラキラ演出用） */
   .gamanTotalWrap {
     position: relative;
@@ -485,8 +570,13 @@
       <span>今週の予算: <span id="weeklyBudgetDisplay">¥0</span></span>
     </div>
     <div class="statGrid">
-      <div class="statBox">
-        <div class="label">1日あたり</div>
+      <div class="statBox dailyStatBox">
+        <div class="dailyLabelRow">
+          <div class="label">1日あたり</div>
+          <button class="ratioGearBtn" id="ratioGearBtn" onclick="toggleRatioPanel()" title="配分比率の設定">
+            ⚙ <span id="weekdayWeightDisplay">1</span>:<span id="weekendWeightDisplay">2</span> <span class="ratioCaret">▼</span>
+          </button>
+        </div>
         <div class="value" id="dailyBudgetDisplay">¥0</div>
       </div>
       <div class="statBox">
@@ -494,6 +584,28 @@
         <div class="value" id="todayRemainingDisplay">¥0</div>
       </div>
     </div>
+
+    <!-- 平日と土日の予算配分比率の設定パネル -->
+    <div class="ratioPanel" id="ratioPanel">
+      <div class="labelText" style="margin-bottom: 8px;">月予算を平日・土日に配分する比率を変更できます</div>
+      <div class="inputGroup">
+        <label class="ratioLabel">平日
+          <input type="number" id="weekdayWeightInput" step="0.1" min="0.1" placeholder="1">
+        </label>
+        <label class="ratioLabel">土日
+          <input type="number" id="weekendWeightInput" step="0.1" min="0.1" placeholder="2">
+        </label>
+        <button onclick="saveRatio()">保存</button>
+      </div>
+      <div class="presetRow">
+        <span class="labelText">プリセット:</span>
+        <button class="presetBtn" onclick="applyPreset(1, 1)">1:1（均等）</button>
+        <button class="presetBtn" onclick="applyPreset(1, 1.5)">1:1.5</button>
+        <button class="presetBtn" onclick="applyPreset(1, 2)">1:2（標準）</button>
+        <button class="presetBtn" onclick="applyPreset(1, 3)">1:3（土日メイン）</button>
+      </div>
+    </div>
+
     <div style="margin-top: 18px;">
       <div class="weekSummary">
         <span class="labelText">曜日別の支出（バー右端＝その日の予算）</span>
@@ -542,6 +654,9 @@
   let monthlyBudget = Number(localStorage.getItem("monthlyBudget")) || 0;
   let expenseList = JSON.parse(localStorage.getItem("expenseList")) || [];
   let gamanList = JSON.parse(localStorage.getItem("gamanList")) || [];
+  // 平日と土日の予算配分比率（デフォルト 1:2）
+  let weekdayWeight = Number(localStorage.getItem("weekdayWeight")) || 1;
+  let weekendWeight = Number(localStorage.getItem("weekendWeight")) || 2;
 
   // 旧データ移行：dateIsoがない既存データに今日の日付を補完
   expenseList = expenseList.map(item => {
@@ -668,6 +783,47 @@
     updateDisplay();
   }
 
+  // 配分比率の設定パネルを開閉
+  function toggleRatioPanel() {
+    const panel = document.getElementById("ratioPanel");
+    const btn = document.getElementById("ratioGearBtn");
+    panel.classList.toggle("open");
+    btn.classList.toggle("open");
+    // 開く時は現在値を入力欄にセット
+    if (panel.classList.contains("open")) {
+      document.getElementById("weekdayWeightInput").value = weekdayWeight;
+      document.getElementById("weekendWeightInput").value = weekendWeight;
+    }
+  }
+
+  // 入力された配分比率を保存して反映
+  function saveRatio() {
+    const wd = Number(document.getElementById("weekdayWeightInput").value);
+    const we = Number(document.getElementById("weekendWeightInput").value);
+    if (wd <= 0 || we <= 0 || isNaN(wd) || isNaN(we)) {
+      alert("0より大きい数値を入力してください");
+      return;
+    }
+    weekdayWeight = wd;
+    weekendWeight = we;
+    localStorage.setItem("weekdayWeight", weekdayWeight);
+    localStorage.setItem("weekendWeight", weekendWeight);
+    document.getElementById("ratioPanel").classList.remove("open");
+    document.getElementById("ratioGearBtn").classList.remove("open");
+    updateDisplay();
+  }
+
+  // プリセット比率を即時適用
+  function applyPreset(wd, we) {
+    weekdayWeight = wd;
+    weekendWeight = we;
+    localStorage.setItem("weekdayWeight", weekdayWeight);
+    localStorage.setItem("weekendWeight", weekendWeight);
+    document.getElementById("ratioPanel").classList.remove("open");
+    document.getElementById("ratioGearBtn").classList.remove("open");
+    updateDisplay();
+  }
+
   function resetMonth() {
     if (!confirm("今月の支出記録を全て削除しますか？\n（目標金額と我慢貯金は残ります）")) return;
     expenseList = [];
@@ -733,10 +889,14 @@
       if (dow === 0 || dow === 6) weekendCountMonth++;
       else weekdayCountMonth++;
     }
-    // 平日1単位、土日2単位として総単位数を計算し、平日の1日予算を求める
-    const totalUnits = weekdayCountMonth + weekendCountMonth * 2;
-    const weekdayBudget = monthlyBudget > 0 && totalUnits > 0 ? monthlyBudget / totalUnits : 0;
-    const weekendBudget = weekdayBudget * 2;
+    // 設定された配分比率で総単位数を計算
+    const totalUnits = weekdayCountMonth * weekdayWeight + weekendCountMonth * weekendWeight;
+    const unitBudget = monthlyBudget > 0 && totalUnits > 0 ? monthlyBudget / totalUnits : 0;
+    const weekdayBudget = unitBudget * weekdayWeight;
+    const weekendBudget = unitBudget * weekendWeight;
+    // 比率設定ボタンの表示も更新
+    document.getElementById("weekdayWeightDisplay").textContent = weekdayWeight;
+    document.getElementById("weekendWeightDisplay").textContent = weekendWeight;
 
     // 曜日から1日の予算を取得（土日は平日の2倍）
     function getDayBudget(dayOfWeek) {
@@ -895,7 +1055,8 @@
     const groups = [
       { fields: ["monthlyBudgetInput"], submit: saveMonthlyBudget },
       { fields: ["expenseNameInput", "expenseAmountInput"], submit: addExpense },
-      { fields: ["gamanNameInput", "gamanAmountInput"], submit: addGaman }
+      { fields: ["gamanNameInput", "gamanAmountInput"], submit: addGaman },
+      { fields: ["weekdayWeightInput", "weekendWeightInput"], submit: saveRatio }
     ];
     groups.forEach(group => {
       group.fields.forEach((id, idx) => {
